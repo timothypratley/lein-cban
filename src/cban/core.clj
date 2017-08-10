@@ -34,15 +34,16 @@
     (if (or macro special?)
       (str "(defmacro " alias "\n"
            (when docstring (str "  \"" docstring "\"\n"))
-           "  [& body]\n  `(" (when (not special?) "z/") existing " ~@body))")
+           "  [& body]\n  `(" (when (not special?) (str source-ns "/")) existing " ~@body))")
       (str "(def " alias "\n"
            (when docstring (str "  \"" docstring "\"\n"))
-           "  z/"
+           "  " source-ns "/"
            existing ")"))))
 
 (defn generate-ns [source-ns destination-ns translations]
-  (str "(ns cban." destination-ns
-       "\n  (:require [" source-ns " :as z]))\n\n;; This file was generated, do not modify it directly\n\n"
+  (require (symbol source-ns))
+  (str "(ns cban." destination-ns ")\n\n"
+       ";; This file was generated, do not modify it directly\n\n"
        (clojure.string/join "\n\n"
          (defs source-ns translations))
        "\n"))
