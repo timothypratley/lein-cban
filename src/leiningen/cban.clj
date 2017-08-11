@@ -19,8 +19,8 @@
   "Clojure by anyother name creates translation macros and defs that alias macros and functions,
   so that you can provide your libary in another written language."
   [project & args]
-  (let [defaults {:input-dir "resources/translations"
-                  :output-dir (str (:target-path project) "cban/")
+  (let [defaults {:input-dir "translations"
+                  :output-dir "cban"
                   :output-map-to (str "resources/" (:name project) "-translations-map.edn")}
         {:keys [input-dir output-dir output-map-to]} (merge defaults (:cban project))]
     (main/info "CBAN starting...")
