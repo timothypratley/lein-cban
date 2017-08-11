@@ -1,4 +1,4 @@
-(ns cban.core
+(ns lein-cban.core
   (:require
     [clojure.string :as string]
     [clojure.pprint :as pprint]
@@ -27,17 +27,14 @@
     "aset"
     "aget"})
 
-;; TODO: looking up meta requires the code as a dependency to be loaded... so can't run as a cmd line
 (defn defs [source-ns form-translations]
-  (for [[existing {:keys [alias docstring]}] form-translations
-        :when (and existing alias)
-        ;; TODO: read this into the manifest instead
-        :let [{:keys [special-form macro]} (meta (ns-resolve (symbol source-ns) (symbol existing)))
-              special? (or special-form (contains? special-names existing))]]
-    (if (or macro special?)
+  ;; TODO: make use of the argslist
+  (for [[existing {:keys [alias docstring special-form macro resolved argslist]}] form-translations
+        :when (and existing alias)]
+    (if (or macro special-form)
       (str "(defmacro " alias "\n"
            (when docstring (str "  \"" docstring "\"\n"))
-           "  [& body]\n  `(" (when (not special?) (str source-ns "/")) existing " ~@body))")
+           "  [& body]\n  `(" (when (not special-form) (str source-ns "/")) existing " ~@body))")
       (str "(def " alias "\n"
            (when docstring (str "  \"" docstring "\"\n"))
            "  " source-ns "/"
@@ -50,19 +47,6 @@
        (clojure.string/join "\n\n"
          (defs source-ns form-translations))
        "\n"))
-
-(defn macro? [source-ns x]
-  (or (contains? special-names x)
-      (let [{:keys [special-form macro]} (meta (ns-resolve (symbol source-ns) (symbol x)))]
-        (or special-form macro))))
-
-#_(defn generate-refer [source-ns destination-ns translations]
-  (let [alias (for [{:keys [existing alias]} translations
-                    :when (and existing alias)]
-                alias)]
-    (str "(require '[" destination-ns
-         " :refer [" (string/join " " (remove #(macro? source-ns %) alias)) "]"
-         " :refer-macros [" (string/join " " (filter #(macro? source-ns %) alias)) "]])")))
 
 (defn destination-ns [language source-ns]
   ;; TODO: can we not use dashes?
@@ -85,21 +69,32 @@
   (spit filename (with-out-str (pprint/pprint translation-map)))
   (main/info "CBAN wrote" filename))
 
-(defn get-namespace-map [file]
-  (into {}
-        (for [{:keys [existing alias docstring] :as x} (c/slurp-csv file)]
-          [existing x])))
+(defn maybe-resolve [source-ns existing]
+  (let [v (try (ns-resolve (symbol source-ns) (symbol existing))
+               (catch Exception ex
+                 (main/warn (str "Failed to resolve '" source-ns "', '" existing "'"))))
+        m (-> v
+              (meta)
+              (select-keys [:docstring :macro :special-form :argslist]))]
+    (cond-> m
+      v (assoc :resolved true)
+      (contains? special-names existing) (assoc :special-form true))))
+
+(defn get-namespace-map [file source-ns]
+  (into (sorted-map)
+        (for [{:keys [existing alias docstring] :as row} (c/slurp-csv file)
+              :let [metadata (maybe-resolve source-ns existing)]]
+          [existing (merge metadata row)])))
 
 (defn get-language [dir language]
-  (into {}
+  (into (sorted-map)
         (for [file (fs/list-dir dir)
               :let [source-ns (fs/base-name file ".csv")]]
-          [source-ns (get-namespace-map file)])))
+          [source-ns (get-namespace-map file source-ns)])))
 
 (defn get-translation-map [in-dir]
-  (into {}
+  (into (sorted-map)
         (for [dir (fs/list-dir in-dir)
               :when (fs/directory? dir)
               :let [language (fs/base-name dir)]]
           [language (get-language dir language)])))
-

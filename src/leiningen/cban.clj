@@ -1,5 +1,5 @@
 (ns leiningen.cban
-  (:require [cban.core :as c]
+  (:require [lein-cban.core :as c]
             [cemerick.pomegranate :as pomegranate]
             [leiningen.core.classpath :as classpath]
             [leiningen.core.project :as project]
@@ -12,6 +12,7 @@
 
 (defn generate-translations [input-dir output-dir output-map-to]
   (let [translation-map (c/get-translation-map input-dir)]
+    ;; TODO: warning messages about unresolved symbols and missing translations
     (c/write-translation-map translation-map output-map-to)
     (c/write-translations translation-map output-dir)))
 

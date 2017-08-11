@@ -3,8 +3,8 @@
             [leiningen.cban :as cban]
             [robert.hooke :as h]))
 
-;; TODO: not sure if compile is the right task to hook onto... things like figwheel don't call it?
-(defn hooks []
+;; TODO: not sure what the right task to hook onto is...
+#_(defn hooks []
   (h/add-hook #'c/javac
             (fn [f & args]
               (cban/cban (first args))
