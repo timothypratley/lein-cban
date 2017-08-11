@@ -4,7 +4,8 @@
     [clojure.pprint :as pprint]
     [me.raynes.fs :as fs]
     [semantic-csv.core :as c]
-    [clojure.java.io :as io]))
+    [clojure.java.io :as io]
+    [leiningen.core.main :as main]))
 
 (def special-names
   #{"def"
@@ -70,19 +71,19 @@
        language))
 
 (defn write-translations [translation-map out-dir]
-  (fs/mkdir (io/file out-dir "cban"))
+  (fs/mkdirs (io/file out-dir))
   (doseq [[language namespace-maps] translation-map
           [source-ns form-translations] namespace-maps
-          :let [d (destination-ns language source-ns)]]
-    (spit (io/file out-dir "cban" (str (string/replace d #"-" "_") ".cljc"))
-          (generate-ns source-ns d form-translations))))
+          :let [d (destination-ns language source-ns)
+                filename (str (string/replace d #"-" "_") ".cljc")
+                outfile (io/file out-dir filename)]]
+    (spit outfile (generate-ns source-ns d form-translations))
+    (main/info "CBAN wrote" (str outfile))))
 
-(defn write-translation-map [translation-map out-dir]
-  (fs/mkdir (io/file out-dir))
-  ;;TODO: put this in resources; make a project key to allow specifying where to put it
-  (spit (io/file out-dir "manifest.edn")
-        (with-out-str
-          (pprint/pprint translation-map))))
+(defn write-translation-map [translation-map filename]
+  (fs/mkdirs (fs/parent filename))
+  (spit filename (with-out-str (pprint/pprint translation-map)))
+  (main/info "CBAN wrote" filename))
 
 (defn get-namespace-map [file]
   (into {}
@@ -102,24 +103,3 @@
               :let [language (fs/base-name dir)]]
           [language (get-language dir language)])))
 
-(defn generate-translations [in-dir out-dir]
-  (println "Processing stuff")
-  (let [translation-map (get-translation-map in-dir)]
-    (write-translation-map translation-map out-dir)
-    (write-translations translation-map out-dir)))
-
-
-#_(defn generate-refers []
-  (doseq [[root dirs files] (fs/iterate-dir "translations")
-          :when (seq files)
-          :let [source-ns (fs/base-name root)]
-          file files
-          :let [translations (c/slurp-csv (io/file root file))
-                destination-ns (str (string/replace source-ns "." "-")
-                                    "-"
-                                    (fs/base-name file ".csv"))]]
-    (println "Writing" source-ns files)
-    (spit (io/file "out" "cban" (str destination-ns ".cljc"))
-          (generate-ns source-ns destination-ns translations))
-    (spit (io/file "out" "cban" (str destination-ns ".refer"))
-          (generate-refer source-ns destination-ns translations))))
