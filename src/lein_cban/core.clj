@@ -20,6 +20,8 @@
     "recur"
     "throw"
     "try"
+    "true"
+    "false"
     "monitor-enter"
     "monitor-exit"
     "new"
@@ -62,7 +64,11 @@
                 filename (str (string/replace d #"-" "_") ".cljc")
                 outfile (io/file out-dir filename)]]
     (spit outfile (generate-ns source-ns d form-translations))
-    (main/info "CBAN wrote" (str outfile))))
+    (main/info "CBAN wrote" (str outfile))
+    (try
+      (main/info "CBAN loaded" (load-file (str outfile)))
+      (catch Exception ex
+        (main/warn "CBAN FAILED to load" (str outfile) (str ex))))))
 
 (defn write-translation-map [translation-map filename]
   (fs/mkdirs (fs/parent filename))
