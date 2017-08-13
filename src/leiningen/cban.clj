@@ -21,7 +21,7 @@
   so that you can provide your libary in another written language."
   [project & args]
   (let [defaults {:input-dir "translations"
-                  :output-dir "cban"
+                  :output-dir "cban-out"
                   :output-map-to (str "resources/" (:name project) "-translations-map.edn")}
         {:keys [input-dir output-dir output-map-to]} (merge defaults (:cban project))]
     (main/info "CBAN starting...")

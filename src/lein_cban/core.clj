@@ -29,6 +29,9 @@
     "aset"
     "aget"})
 
+(def root-ns
+  "cban")
+
 (defn defs [source-ns form-translations]
   ;; TODO: make use of the argslist
   (for [[existing {:keys [alias docstring special-form macro resolved argslist]}] form-translations
@@ -44,7 +47,7 @@
 
 (defn generate-ns [source-ns destination-ns form-translations]
   (require (symbol source-ns))
-  (str "(ns cban." destination-ns ")\n\n"
+  (str "(ns " root-ns "." destination-ns ")\n\n"
        ";; This file was generated, do not modify it directly\n\n"
        (clojure.string/join "\n\n"
          (defs source-ns form-translations))
@@ -62,7 +65,7 @@
           [source-ns form-translations] namespace-maps
           :let [d (destination-ns language source-ns)
                 filename (str (string/replace d #"-" "_") ".cljc")
-                outfile (io/file out-dir filename)]]
+                outfile (io/file out-dir root-ns filename)]]
     (spit outfile (generate-ns source-ns d form-translations))
     (main/info "CBAN wrote" (str outfile))
     (try
