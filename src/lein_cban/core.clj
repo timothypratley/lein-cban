@@ -66,7 +66,7 @@
        language))
 
 (defn write-translations [translation-map out-dir]
-  (fs/mkdirs (io/file out-dir))
+  (fs/mkdirs (io/file out-dir root-ns))
   (doseq [[language namespace-maps] translation-map
           [source-ns form-translations] namespace-maps
           :let [d (destination-ns language source-ns)
