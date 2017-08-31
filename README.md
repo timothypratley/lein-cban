@@ -39,6 +39,11 @@ You can override the defaults parameters in your project like so:
        :output-map-to "translation-map.edn"}
 ```
 
+`lein-cban` works best on cljc files because they can be loaded in Clojure
+so that translations can be checked for both Clojure and ClojureScript. Consider wrapping any ClojureScript specific code in
+[reader conditionals](https://github.com/clojure/clojurescript/wiki/Using-cljc).
+If `lein-cban` is unable to resolve a symbol, it will create the alias anyway,
+and report a warning.
 
 ## License
 

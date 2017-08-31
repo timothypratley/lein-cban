@@ -45,8 +45,14 @@
            "  " source-ns "/"
            existing ")"))))
 
+(defn maybe-refer [source-ns]
+  (try ;; cljs file cannot be loaded by Clojure
+    (require (symbol source-ns))
+    (catch Exception ex
+      (main/warn (str "Failed to require '" source-ns "' - " (.getMessage ex))))))
+
 (defn generate-ns [source-ns destination-ns form-translations]
-  (require (symbol source-ns))
+  (maybe-refer source-ns)
   (str "(ns " root-ns "." destination-ns ")\n\n"
        ";; This file was generated, do not modify it directly\n\n"
        (clojure.string/join "\n\n"
@@ -79,9 +85,10 @@
   (main/info "CBAN wrote" filename))
 
 (defn maybe-resolve [source-ns existing]
-  (let [v (try (ns-resolve (symbol source-ns) (symbol existing))
-               (catch Exception ex
-                 (main/warn (str "Failed to resolve '" source-ns "', '" existing "'"))))
+  (let [v (try
+            (ns-resolve (symbol source-ns) (symbol existing))
+            (catch Exception ex
+              (main/warn (str "Failed to resolve '" source-ns "/" existing "' - " (.getMessage ex)))))
         m (-> v
               (meta)
               (select-keys [:docstring :macro :special-form :argslist]))]
@@ -90,6 +97,7 @@
       (contains? special-names existing) (assoc :special-form true))))
 
 (defn get-namespace-map [file source-ns]
+  (maybe-refer source-ns)
   (into (sorted-map)
         (for [{:keys [existing alias docstring] :as row} (c/slurp-csv file)
               :let [metadata (maybe-resolve source-ns existing)]]
