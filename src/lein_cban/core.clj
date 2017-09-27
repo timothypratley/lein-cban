@@ -33,17 +33,61 @@
   "cban")
 
 (defn defs [source-ns form-translations]
-  ;; TODO: make use of the argslist
-  (for [[existing {:keys [alias docstring special-form macro resolved argslist]}] form-translations
+  (for [[existing {:keys [alias docstring special-form macro resolved arglists] :as m}] form-translations
         :when (and existing alias)]
-    (if (or macro special-form)
+    (cond
+      (or macro special-form)
       (str "(defmacro " alias "\n"
-           (when docstring (str "  \"" docstring "\"\n"))
-           "  [& body]\n  `(" (when (not special-form) (str source-ns "/")) existing " ~@body))")
+           (when docstring
+             (str "  \"" docstring "\"\n"))
+           "  [& body]\n  `("
+           (when (and (not special-form)
+                      (not= "clojure.core" source-ns))
+             (str source-ns "/"))
+           existing
+           " ~@body))")
+
+      arglists
+      #_(str "(def " alias " ^" (or m {}) "\n"
+           #_(when docstring
+             (str "  \"" docstring "\"\n"))
+           "  "
+           (when (not= "clojure.core" source-ns)
+             (str source-ns "/"))
+           existing
+           ")")
+      ;; TODO: does not work for nested destructuring (eg assoc-in)
+      (str "(defn " alias "\n"
+           (when docstring
+             (str "  \"" docstring "\"\n"))
+           (string/join \newline
+             (for [args arglists
+                   :let [variadic (some #{'&} args)]]
+               (str
+                 "  ("
+                 args
+                 "\n   ("
+                 (when variadic
+                   "apply ")
+                 (when (not= "clojure.core" source-ns)
+                   "s/")
+                 existing
+                 (when (seq args)
+                   (str
+                     " "
+                     (string/join " " (remove #{'&} args))))
+                 "))")))
+           ")")
+
+      :else
       (str "(def " alias "\n"
-           (when docstring (str "  \"" docstring "\"\n"))
-           "  " source-ns "/"
-           existing ")"))))
+           (when docstring
+             (str "  \"" docstring "\"\n"))
+           "  "
+           (when (not= "clojure.core" source-ns)
+             (str source-ns "/"))
+           existing
+           ")"))))
 
 (defn maybe-refer [source-ns]
   (try ;; cljs file cannot be loaded by Clojure
@@ -53,8 +97,10 @@
 
 (defn generate-ns [source-ns destination-ns form-translations]
   (maybe-refer source-ns)
-  (str "(ns " root-ns "." destination-ns ")\n\n"
-       ";; This file was generated, do not modify it directly\n\n"
+  (str "(ns " root-ns "." destination-ns
+       (when (not= "clojure.core" source-ns)
+         (str "\n  (:require [" source-ns " :as s])"))
+       ")\n\n;; This file was generated, do not modify it directly\n\n"
        (clojure.string/join "\n\n"
          (defs source-ns form-translations))
        "\n"))
@@ -65,13 +111,13 @@
        "-"
        language))
 
-(defn write-translations [translation-map out-dir]
-  (fs/mkdirs (io/file out-dir root-ns))
+(defn write-translations [translation-map output-dir output-extension]
+  (fs/mkdirs (io/file output-dir root-ns))
   (doseq [[language namespace-maps] translation-map
           [source-ns form-translations] namespace-maps
           :let [d (destination-ns language source-ns)
-                filename (str (string/replace d #"-" "_") ".cljc")
-                outfile (io/file out-dir root-ns filename)]]
+                filename (str (string/replace d #"-" "_") "." output-extension)
+                outfile (io/file output-dir root-ns filename)]]
     (spit outfile (generate-ns source-ns d form-translations))
     (main/info "CBAN wrote" (str outfile))
     (try
@@ -91,7 +137,7 @@
               (main/warn (str "Failed to resolve '" source-ns "/" existing "' - " (.getMessage ex)))))
         m (-> v
               (meta)
-              (select-keys [:docstring :macro :special-form :argslist]))]
+              (select-keys [:docstring :macro :special-form :arglists]))]
     (cond-> m
       v (assoc :resolved true)
       (contains? special-names existing) (assoc :special-form true))))

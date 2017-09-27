@@ -10,11 +10,11 @@
   (doseq [path (classpath/get-classpath project)]
     (pomegranate/add-classpath path)))
 
-(defn generate-translations [input-dir output-dir output-map-to]
+(defn generate-translations [input-dir output-dir output-extension output-map-to]
   (let [translation-map (c/get-translation-map input-dir)]
     ;; TODO: warning messages about unresolved symbols and missing translations
     (c/write-translation-map translation-map output-map-to)
-    (c/write-translations translation-map output-dir)))
+    (c/write-translations translation-map output-dir output-extension)))
 
 (defn cban
   "Clojure by anyother name creates translation macros and defs that alias macros and functions,
@@ -22,9 +22,10 @@
   [project & args]
   (let [defaults {:input-dir "translations"
                   :output-dir "cban-out"
+                  :output-extension "cljc"
                   :output-map-to (str "resources/" (:name project) "-translations-map.edn")}
-        {:keys [input-dir output-dir output-map-to]} (merge defaults (:cban project))]
+        {:keys [input-dir output-dir output-extension output-map-to]} (merge defaults (:cban project))]
     (main/info "CBAN starting...")
     (load-project-dependencies project)
-    (generate-translations input-dir output-dir output-map-to)
+    (generate-translations input-dir output-dir output-extension output-map-to)
     (main/info "CBAN done.")))
