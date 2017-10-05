@@ -37,15 +37,15 @@
         :when (and existing alias)]
     (cond
       (or macro special-form)
-      (str "(defmacro " alias "\n"
+      (str "#?(:clj (defmacro " alias "\n"
            (when docstring
              (str "  \"" docstring "\"\n"))
            "  [& body]\n  `("
            (when (and (not special-form)
                       (not= "clojure.core" source-ns))
-             (str source-ns "/"))
+             "s/")
            existing
-           " ~@body))")
+           " ~@body)))")
 
       arglists
       #_(str "(def " alias " ^" (or m {}) "\n"
@@ -56,7 +56,7 @@
              (str source-ns "/"))
            existing
            ")")
-      ;; TODO: does not work for nested destructuring (eg assoc-in)
+      ;; TODO: does not work for nested destructuring (eg assoc-in)... to fix just replace all vectors and maps with an unused letter
       (str "(defn " alias "\n"
            (when docstring
              (str "  \"" docstring "\"\n"))
