@@ -15,7 +15,7 @@ which provides translations for clojure.core, and demonstrates how to use the pl
 
 ## Usage
 
-Put `[lein-cban "0.1.0-SNAPSHOT"]` into the `:plugins` vector of your project.clj
+Put `[lein-cban "0.1.0"]` into the `:plugins` vector of your project.clj
 
 Put translation csv files in a `translations` directory.
 You should create a sub-directory per language,
